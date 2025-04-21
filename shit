@@ -1,0 +1,282 @@
+// Project structure:
+// 
+// project-root/
+// ├─ backend/
+// │   ├─ package.json
+// │   ├─ .env
+// │   ├─ db.js
+// │   └─ server.js
+// └─ frontend/
+//     ├─ package.json
+//     ├─ tailwind.config.js
+//     ├─ postcss.config.js
+//     ├─ public/
+//     │   └─ index.html
+//     └─ src/
+//         ├─ index.jsx
+//         ├─ App.jsx
+//         ├─ components/
+//         │   └─ Form.jsx
+//         └─ index.css
+
+/* ---------- backend/package.json ---------- */
+```json
+{
+  "name": "sqlite-form-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.2",
+    "dotenv": "^16.0.0"
+  }
+}
+```
+
+/* ---------- backend/.env ---------- */
+```
+DB_FILE=./forms.db
+PORT=3001
+```
+
+/* ---------- backend/db.js ---------- */
+```js
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+require('dotenv').config();
+
+const dbPath = path.resolve(process.env.DB_FILE);
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) console.error('DB Connection Error:', err);
+  else console.log('Connected to SQLite at', dbPath);
+});
+
+// Create table if not exists
+const createTable = `
+  CREATE TABLE IF NOT EXISTS FORM_TABLE (
+    FormID INTEGER PRIMARY KEY AUTOINCREMENT,
+    PatientID INTEGER NOT NULL,
+    "Input 2" TEXT,
+    "Input 3" TEXT
+  );
+`;
+
+db.run(createTable, (err) => {
+  if (err) console.error('Table creation error:', err);
+});
+
+module.exports = db;
+```
+
+/* ---------- backend/server.js ---------- */
+```js
+const express = require('express');
+const db = require('./db');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+app.use(cors());
+app.use(express.json());
+
+app.post('/submit-form', (req, res) => {
+  const { patientID, input2, input3 } = req.body;
+  const stmt = db.prepare(
+    'INSERT INTO FORM_TABLE (PatientID, "Input 2", "Input 3") VALUES (?, ?, ?)'
+  );
+  stmt.run(patientID, input2, input3, function(err) {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Insertion failed' });
+    } else {
+      res.status(201).json({ formID: this.lastID });
+    }
+  });
+  stmt.finalize();
+});
+
+app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));
+```
+
+/* ---------- frontend/package.json ---------- */
+```json
+{
+  "name": "sqlite-form-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.4.2",
+    "vite": "^4.3.9",
+    "@vitejs/plugin-react": "^4.0.0"
+  }
+}
+```
+
+/* ---------- frontend/tailwind.config.js ---------- */
+```js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./index.html', './src/**/*.{js,jsx}'],
+  theme: { extend: {} },
+  plugins: [],
+};
+```
+
+/* ---------- frontend/postcss.config.js ---------- */
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+/* ---------- frontend/public/index.html ---------- */
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React SQLite Form</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html>
+```
+
+/* ---------- frontend/src/index.css ---------- */
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-100 text-gray-800;
+}
+```
+
+/* ---------- frontend/src/index.jsx ---------- */
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+```
+
+/* ---------- frontend/src/App.jsx ---------- */
+```jsx
+import React from 'react';
+import Form from './components/Form';
+
+export default function App() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Submit Patient Form</h1>
+        <Form />
+      </div>
+    </div>
+  );
+}
+```
+
+/* ---------- frontend/src/components/Form.jsx ---------- */
+```jsx
+import React, { useState } from 'react';
+
+export default function Form() {
+  const [patientID, setPatientID] = useState('');
+  const [input2, setInput2] = useState('');
+  const [input3, setInput3] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:3001/submit-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientID, input2, input3 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage(`✔️ Form submitted! FormID: ${data.formID}`);
+        setPatientID('');
+        setInput2('');
+        setInput3('');
+      } else {
+        setMessage(`❌ Error: ${data.error}`);
+      }
+    } catch (err) {
+      setMessage('❌ Network error');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium">Patient ID</label>
+        <input
+          type="number"
+          value={patientID}
+          onChange={(e) => setPatientID(e.target.value)}
+          required
+          className="mt-1 block w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Input 2</label>
+        <input
+          type="text"
+          value={input2}
+          onChange={(e) => setInput2(e.target.value)}
+          className="mt-1 block w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium">Input 3</label>
+        <input
+          type="text"
+          value={input3}
+          onChange={(e) => setInput3(e.target.value)}
+          className="mt-1 block w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+      >
+        Submit
+      </button>
+      {message && <p className="mt-4 text-center">{message}</p>}
+    </form>
+```
+
+/* ---------- Instructions ---------- */
+// 1. In `backend` folder: run `npm install`, create `.env`, then `npm start`.
+// 2. In `frontend` folder: run `npm install`, then `npm run dev`.
+// 3. Point your browser to http://localhost:5173 (default Vite port).
+// 4. The React form will POST to http://localhost:3001/submit-form and display the new FormID.
