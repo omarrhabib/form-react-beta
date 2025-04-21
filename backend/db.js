@@ -8,18 +8,24 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log('Connected to SQLite at', dbPath);
 });
 
-// Create table if not exists
-const createTable = `
+// Create FORM_TABLE
+db.run(`
   CREATE TABLE IF NOT EXISTS FORM_TABLE (
     FormID INTEGER PRIMARY KEY AUTOINCREMENT,
     PatientID INTEGER NOT NULL,
     "Input 2" TEXT,
     "Input 3" TEXT
   );
-`;
+`);
 
-db.run(createTable, (err) => {
-  if (err) console.error('Table creation error:', err);
-});
+// Create PATIENT_TABLE
+db.run(`
+  CREATE TABLE IF NOT EXISTS PATIENT_TABLE (
+    PatientID INTEGER PRIMARY KEY AUTOINCREMENT,
+    FirstName TEXT NOT NULL,
+    LastName TEXT NOT NULL,
+    Age INTEGER NOT NULL
+  );
+`);
 
 module.exports = db;

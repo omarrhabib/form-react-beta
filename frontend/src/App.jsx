@@ -1,12 +1,17 @@
-import React from 'react';
-import Form from './components/Form';
+import React, { useState } from 'react';
+import Home from './components/Home';
+import RegisterPatient from './components/RegisterPatient';
+import SubmitForm from './components/SubmitForm';
 
 export default function App() {
+  const [page, setPage] = useState('home');
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Patient Form</h1>
-        <Form />
+        {page === 'home' && <Home onNavigate={setPage} />}
+        {page === 'register' && <RegisterPatient onNavigate={setPage} />}
+        {page === 'submit' && <SubmitForm onNavigate={setPage} />}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Form() {
+export default function Form({ onNavigate }) {
   const [patientID, setPatientID] = useState('');
   const [input2, setInput2] = useState('');
   const [input3, setInput3] = useState('');
@@ -29,6 +29,11 @@ export default function Form() {
   };
 
   return (
+    <div>
+      <button onClick={() => onNavigate('home')} className="text-sm text-gray-500 hover:underline">
+        ← Back
+      </button>
+      <h2 className="text-xl font-semibold mb-4">Register Patient</h2>
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium">Patient ID</label>
@@ -66,5 +71,6 @@ export default function Form() {
       </button>
       {message && <p className="mt-4 text-center">{message}</p>}
     </form>
+  </div>
   )
 }
